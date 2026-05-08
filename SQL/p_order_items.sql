@@ -24,14 +24,15 @@ SET time_zone = "+00:00";
 -- --------------------------------------------------------
 
 --
--- Cấu trúc bảng cho bảng `p_cart`
+-- Cấu trúc bảng cho bảng `p_order_items`
 --
 
-CREATE TABLE `p_cart` (
+CREATE TABLE `p_order_items` (
   `id` int(11) NOT NULL,
-  `username` varchar(50) NOT NULL,
+  `order_id` int(11) NOT NULL,
   `product_id` int(11) NOT NULL,
-  `quantity` int(11) NOT NULL DEFAULT 1
+  `quantity` int(11) NOT NULL,
+  `price` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
@@ -39,17 +40,17 @@ CREATE TABLE `p_cart` (
 --
 
 --
--- Chỉ mục cho bảng `p_cart`
+-- Chỉ mục cho bảng `p_order_items`
 --
-ALTER TABLE `p_cart`
+ALTER TABLE `p_order_items`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `fk_username` (`username`),
-  ADD KEY `fk_product_id` (`product_id`);
+  ADD KEY `fk_order_item_order` (`order_id`),
+  ADD KEY `fk_order_item_product` (`product_id`);
 
 --
--- AUTO_INCREMENT cho bảng `p_cart`
+-- AUTO_INCREMENT cho bảng `p_order_items`
 --
-ALTER TABLE `p_cart`
+ALTER TABLE `p_order_items`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
@@ -57,11 +58,11 @@ ALTER TABLE `p_cart`
 --
 
 --
--- Các ràng buộc cho bảng `p_cart`
+-- Các ràng buộc cho bảng `p_order_items`
 --
-ALTER TABLE `p_cart`
-  ADD CONSTRAINT `fk_username` FOREIGN KEY (`username`) REFERENCES `p_users` (`username`),
-  ADD CONSTRAINT `fk_product_id` FOREIGN KEY (`product_id`) REFERENCES `p_product` (`id`);
+ALTER TABLE `p_order_items`
+  ADD CONSTRAINT `fk_order_item_order` FOREIGN KEY (`order_id`) REFERENCES `p_orders` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_order_item_product` FOREIGN KEY (`product_id`) REFERENCES `p_product` (`id`);
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

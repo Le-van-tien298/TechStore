@@ -845,6 +845,13 @@ function formatPrice(float $p): string {
       <span class="count"><?= count($users) ?></span>
     </a>
 
+    <a href="admin_orders.php"
+       class="sidebar-link">
+      <i class="fa-solid fa-shopping-cart"></i>
+      Quản lí đơn hàng
+      <span class="count"><?= count($db->getAllOrders()) ?></span>
+    </a>
+
     <div class="sidebar-section-label" style="margin-top:8px;">Cửa hàng</div>
 
     <a href="index.php" class="sidebar-link">

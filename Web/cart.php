@@ -397,6 +397,11 @@ function updateBadge(count) {
   if (window.opener) window.opener.postMessage({cartCount: count}, '*');
 }
 
+// ── Thanh toán ──
+document.getElementById('btnCheckout').addEventListener('click', function() {
+  window.location.href = 'checkout.php';
+});
+
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeEdit(); });
 </script>
 </body>

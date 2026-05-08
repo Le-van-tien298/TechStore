@@ -180,6 +180,13 @@ class Database {
         return $stmt->execute([...$cartIds, $username]);
     }
 
+    /** Xóa toàn bộ giỏ hàng của user */
+    public function clearCart(string $username): bool
+    {
+        $stmt = $this->conn->prepare("DELETE FROM p_cart WHERE username = :username");
+        return $stmt->execute([':username' => $username]);
+    }
+
     // ------------------------------------------------------------------ //
     //  p_wishlist
     // ------------------------------------------------------------------ //
@@ -223,5 +230,109 @@ class Database {
             $stmt->execute([':u'=>$username, ':p'=>$productId]);
             return 'added';
         }
+    }
+
+    // ------------------------------------------------------------------ //
+    //  p_orders & p_order_items
+    // ------------------------------------------------------------------ //
+
+    /** Tạo đơn hàng mới */
+    public function createOrder(string $username, array $cartItems, int $totalAmount, string $shippingAddress = '', string $paymentMethod = 'credit_card'): int
+    {
+        $this->conn->beginTransaction();
+        try {
+            // Tạo order
+            $stmt = $this->conn->prepare(
+                "INSERT INTO p_orders (username, total_amount, shipping_address, payment_method) 
+                 VALUES (:username, :total, :address, :payment)"
+            );
+            $stmt->execute([
+                ':username' => $username,
+                ':total' => $totalAmount,
+                ':address' => $shippingAddress,
+                ':payment' => $paymentMethod
+            ]);
+            $orderId = $this->conn->lastInsertId();
+
+            // Thêm order items
+            $stmt = $this->conn->prepare(
+                "INSERT INTO p_order_items (order_id, product_id, quantity, price) 
+                 VALUES (:order_id, :product_id, :quantity, :price)"
+            );
+            foreach ($cartItems as $item) {
+                $stmt->execute([
+                    ':order_id' => $orderId,
+                    ':product_id' => $item['product_id'],
+                    ':quantity' => $item['quantity'],
+                    ':price' => $item['price']
+                ]);
+            }
+
+            $this->conn->commit();
+            return $orderId;
+        } catch (Exception $e) {
+            $this->conn->rollBack();
+            throw $e;
+        }
+    }
+
+    /** Lấy đơn hàng của user */
+    public function getUserOrders(string $username): array
+    {
+        $stmt = $this->conn->prepare(
+            "SELECT * FROM p_orders WHERE username = :username ORDER BY created_at DESC"
+        );
+        $stmt->execute([':username' => $username]);
+        return $stmt->fetchAll();
+    }
+
+    /** Lấy chi tiết đơn hàng */
+    public function getOrderDetails(int $orderId): array|false
+    {
+        $stmt = $this->conn->prepare(
+            "SELECT o.*, u.name as user_name, u.email 
+             FROM p_orders o 
+             JOIN p_users u ON o.username = u.username 
+             WHERE o.id = :id"
+        );
+        $stmt->execute([':id' => $orderId]);
+        $order = $stmt->fetch();
+        if (!$order)
+            return false;
+
+        // Lấy items
+        $stmt = $this->conn->prepare(
+            "SELECT oi.*, p.name, p.image, t.name as type_name
+             FROM p_order_items oi
+             JOIN p_product p ON oi.product_id = p.id
+             LEFT JOIN p_type t ON p.id_type = t.type
+             WHERE oi.order_id = :order_id"
+        );
+        $stmt->execute([':order_id' => $orderId]);
+        $order['items'] = $stmt->fetchAll();
+
+        return $order;
+    }
+
+    /** Cập nhật trạng thái đơn hàng */
+    public function updateOrderStatus(int $orderId, string $status): bool
+    {
+        $stmt = $this->conn->prepare(
+            "UPDATE p_orders SET status = :status WHERE id = :id"
+        );
+        return $stmt->execute([':status' => $status, ':id' => $orderId]);
+    }
+
+    /** Lấy tất cả đơn hàng (cho admin) */
+    public function getAllOrders(): array
+    {
+        $stmt = $this->conn->prepare(
+            "SELECT o.*, u.name as user_name 
+             FROM p_orders o 
+             JOIN p_users u ON o.username = u.username 
+             ORDER BY o.created_at DESC"
+        );
+        $stmt->execute();
+        return $stmt->fetchAll();
     }
 }

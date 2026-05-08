@@ -446,6 +446,9 @@ $productsJson = json_encode(array_values($products), JSON_UNESCAPED_UNICODE);
                 <i class="fa-solid fa-screwdriver-wrench"></i> Quản lí
               </a>
             <?php endif; ?>
+            <a href="orders.php" class="user-dropdown-item">
+              <i class="fa-solid fa-shopping-bag"></i> Đơn hàng của tôi
+            </a>
             <a href="logout.php" class="user-dropdown-item logout">
               <i class="fa-solid fa-right-from-bracket"></i> Đăng xuất
             </a>
