@@ -21,31 +21,43 @@ $error   = '';
 
 // ── XỬ LÝ SẢN PHẨM ──
 if ($action === 'add_product') {
-    $name        = trim($_POST['name'] ?? '');
-    $price       = (int)   ($_POST['price']       ?? 0);
-    $description = trim($_POST['description'] ?? '');
-    $id_type     = trim($_POST['id_type']     ?? '');
-    $image       = trim($_POST['image']       ?? '');
+  $name = trim($_POST['name'] ?? '');
+  $price = (int) ($_POST['price'] ?? 0);
+  $description = trim($_POST['description'] ?? '');
+  $id_type = trim($_POST['id_type'] ?? '');
+  $image = trim($_POST['image'] ?? '');
+  $flashSaleActive = isset($_POST['flash_sale_active']) ? 1 : 0;
+  $flashSalePrice = (int) ($_POST['flash_sale_price'] ?? 0);
 
     if ($name && $price && $id_type) {
-        $db->insertProduct($name, $price, $description, $id_type, $image);
-        $success = 'Thêm sản phẩm thành công!';
+    if ($flashSaleActive && ($flashSalePrice <= 0 || $flashSalePrice >= $price)) {
+      $error = 'Giá Flash Sale phải lớn hơn 0 và nhỏ hơn giá gốc.';
+    } else {
+      $db->insertProduct($name, $price, $description, $id_type, $image, $flashSaleActive, $flashSalePrice);
+      $success = 'Thêm sản phẩm thành công!';
+    }
     } else {
         $error = 'Vui lòng điền đầy đủ thông tin bắt buộc.';
     }
 }
 
 if ($action === 'edit_product') {
-    $id          = (int)   ($_POST['id']          ?? 0);
-    $name        = trim($_POST['name']        ?? '');
-    $price       = (int)   ($_POST['price']       ?? 0);
-    $description = trim($_POST['description'] ?? '');
-    $id_type     = trim($_POST['id_type']     ?? '');
-    $image       = trim($_POST['image']       ?? '');
+  $id = (int) ($_POST['id'] ?? 0);
+  $name = trim($_POST['name'] ?? '');
+  $price = (int) ($_POST['price'] ?? 0);
+  $description = trim($_POST['description'] ?? '');
+  $id_type = trim($_POST['id_type'] ?? '');
+  $image = trim($_POST['image'] ?? '');
+  $flashSaleActive = isset($_POST['flash_sale_active']) ? 1 : 0;
+  $flashSalePrice = (int) ($_POST['flash_sale_price'] ?? 0);
 
     if ($id && $name && $price && $id_type) {
-        $db->updateProduct($id, $name, $price, $description, $id_type, $image);
-        $success = 'Cập nhật sản phẩm thành công!';
+    if ($flashSaleActive && ($flashSalePrice <= 0 || $flashSalePrice >= $price)) {
+      $error = 'Giá Flash Sale phải lớn hơn 0 và nhỏ hơn giá gốc.';
+    } else {
+      $db->updateProduct($id, $name, $price, $description, $id_type, $image, $flashSaleActive, $flashSalePrice);
+      $success = 'Cập nhật sản phẩm thành công!';
+    }
     } else {
         $error = 'Vui lòng điền đầy đủ thông tin bắt buộc.';
     }
@@ -605,6 +617,7 @@ function formatPrice(float $p): string {
       position: fixed;
       top: 0; right: 0; bottom: 0;
       width: 480px;
+      max-height: 100vh;
       background: white;
       box-shadow: -8px 0 40px rgba(13,27,75,.2);
       z-index: 210;
@@ -612,9 +625,28 @@ function formatPrice(float $p): string {
       flex-direction: column;
       transform: translateX(100%);
       transition: transform .3s cubic-bezier(.4,0,.2,1);
+      overflow: hidden;
     }
 
     .overlay.open .drawer { transform: translateX(0); }
+
+    .drawer-footer {
+      position: sticky;
+      bottom: 0;
+      background: white;
+      z-index: 220;
+      padding-top: 14px;
+    }
+
+    .drawer-body {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 24px 24px 90px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
 
     .drawer-header {
       padding: 20px 24px 18px;
@@ -648,10 +680,19 @@ function formatPrice(float $p): string {
 
     .drawer-close:hover { background: var(--red); color: white; }
 
+    .drawer form {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+    }
+
     .drawer-body {
       flex: 1;
+      min-height: 0;
       overflow-y: auto;
-      padding: 24px;
+      -webkit-overflow-scrolling: touch;
+      padding: 24px 24px 100px;
       display: flex;
       flex-direction: column;
       gap: 16px;
@@ -1035,10 +1076,10 @@ function formatPrice(float $p): string {
                   <td class="price-cell"><?= formatPrice((float)$p['price']) ?></td>
                   <td>
                     <div class="action-btns">
-                      <button class="btn-edit" onclick="openEditProduct(<?= htmlspecialchars(json_encode($p), ENT_QUOTES) ?>)">
+                      <button type="button" class="btn-edit" onclick="openEditProduct(<?= htmlspecialchars(json_encode($p), ENT_QUOTES) ?>)">
                         <i class="fa-solid fa-pen"></i> Sửa
                       </button>
-                      <button class="btn-delete" onclick="confirmDelete('product', <?= $p['id'] ?>, '<?= htmlspecialchars(addslashes($p['name'])) ?>')">
+                      <button type="button" class="btn-delete" onclick="confirmDelete('product', <?= $p['id'] ?>, '<?= htmlspecialchars(addslashes($p['name'])) ?>')">
                         <i class="fa-solid fa-trash"></i> Xóa
                       </button>
                     </div>
@@ -1132,6 +1173,18 @@ function formatPrice(float $p): string {
         <div class="form-group">
           <label class="form-label"><i class="fa-solid fa-tag"></i> Giá (VNĐ) <span class="req">*</span></label>
           <input type="number" name="price" id="pPrice" class="form-control" placeholder="VD: 29990000" min="0" required>
+        </div>
+        <div class="form-group form-group-inline">
+          <label class="form-label"><i class="fa-solid fa-bolt"></i> Bật Flash Sale</label>
+          <label class="switch">
+            <input type="checkbox" name="flash_sale_active" id="pFlashActive">
+            <span class="slider round"></span>
+          </label>
+        </div>
+        <div class="form-group" id="flashSalePriceGroup" style="display:none;">
+          <label class="form-label"><i class="fa-solid fa-tag"></i> Giá Flash Sale (VNĐ)</label>
+          <input type="number" name="flash_sale_price" id="pFlashPrice" class="form-control" placeholder="VD: 21990000" min="0">
+          <small class="form-note">Giá Flash Sale phải nhỏ hơn giá gốc để kích hoạt.</small>
         </div>
         <div class="form-group">
           <label class="form-label"><i class="fa-solid fa-folder"></i> Danh mục <span class="req">*</span></label>
@@ -1232,10 +1285,14 @@ function handleOverlayClick(e, id) { if(e.target.id===id) closeDrawer(id); }
 // ── Product drawer ──────────────────────────────────────────────
 function openAddProduct() {
   document.getElementById('productDrawerTitle').innerHTML = '<i class="fa-solid fa-plus"></i> Thêm sản phẩm';
+  document.getElementById('productDrawer').scrollTop = 0;
   document.getElementById('productAction').value = 'add_product';
   document.getElementById('productId').value = '';
   document.getElementById('pName').value  = '';
   document.getElementById('pPrice').value = '';
+  document.getElementById('pFlashActive').checked = false;
+  document.getElementById('pFlashPrice').value = '';
+  document.getElementById('flashSalePriceGroup').style.display = 'none';
   document.getElementById('pDesc').value  = '';
   document.getElementById('pImage').value = '';
   document.getElementById('pType').value  = '';
@@ -1244,15 +1301,28 @@ function openAddProduct() {
 
 function openEditProduct(p) {
   document.getElementById('productDrawerTitle').innerHTML = '<i class="fa-solid fa-pen"></i> Sửa sản phẩm';
+  document.getElementById('productDrawer').scrollTop = 0;
+  document.getElementById('productDrawerTitle').innerHTML = '<i class="fa-solid fa-pen"></i> Sửa sản phẩm';
   document.getElementById('productAction').value = 'edit_product';
   document.getElementById('productId').value  = p.id;
   document.getElementById('pName').value       = p.name;
   document.getElementById('pPrice').value      = p.price;
+  document.getElementById('pFlashActive').checked = Boolean(p.flash_sale_active);
+  document.getElementById('pFlashPrice').value  = p.flash_sale_price || '';
+  document.getElementById('flashSalePriceGroup').style.display = p.flash_sale_active ? '' : 'none';
   document.getElementById('pDesc').value       = p.description;
   document.getElementById('pImage').value      = p.image;
   document.getElementById('pType').value       = p.id_type;
+  document.getElementById('productDrawer').scrollTop = 0;
   openDrawer('productDrawerOverlay');
 }
+
+function toggleFlashSalePriceInput() {
+  const checkbox = document.getElementById('pFlashActive');
+  document.getElementById('flashSalePriceGroup').style.display = checkbox.checked ? '' : 'none';
+}
+
+document.getElementById('pFlashActive').addEventListener('change', toggleFlashSalePriceInput);
 
 // ── User drawer ─────────────────────────────────────────────────
 function openAddUser() {

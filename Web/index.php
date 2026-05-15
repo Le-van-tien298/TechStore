@@ -117,7 +117,7 @@ $productsJson = json_encode(array_values($products), JSON_UNESCAPED_UNICODE);
   <title>TechStore<?= $keyword ? ' - ' . htmlspecialchars($keyword) : '' ?></title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-  <link rel="stylesheet" href="public/css/index.css">
+  <link rel="stylesheet" href="public/css/index.css?v=1.1">
 </head>
 
 <body>
@@ -280,6 +280,14 @@ $productsJson = json_encode(array_values($products), JSON_UNESCAPED_UNICODE);
       </a>
     <?php endif; ?>
 
+    <div class="compare-bar" id="compareBar">
+      <div><i class="fa-solid fa-scale-balanced"></i> Đã chọn <span id="compareCount">0</span> sản phẩm để so sánh</div>
+      <div class="compare-actions">
+        <button class="btn-compare-action" type="button" onclick="openComparePage()">Xem so sánh</button>
+        <button class="btn-clear-compare" type="button" onclick="clearCompareSelection()">Xóa chọn</button>
+      </div>
+    </div>
+
     <!-- Sort -->
     <form method="GET" action="index.php" style="margin-left:auto">
       <?= $keyword ? '<input type="hidden" name="q"    value="' . htmlspecialchars($keyword) . '">' : '' ?>
@@ -314,6 +322,10 @@ $productsJson = json_encode(array_values($products), JSON_UNESCAPED_UNICODE);
             );
           }
           $displayType = $p['type_name'] ?? $p['id_type'];
+          $hasFlashSale = !empty($p['flash_sale_active']) && (float) $p['flash_sale_price'] > 0 && (float) $p['flash_sale_price'] < (float) $p['price'];
+          $salePrice = $hasFlashSale ? (float) $p['flash_sale_price'] : 0;
+          $origPrice = (float) $p['price'];
+          $discount = $hasFlashSale ? round((($origPrice - $salePrice) / $origPrice) * 100) : 0;
         ?>
           <div class="product-card" style="animation-delay:<?= $delay ?>s">
             <div class="product-img-wrap" style="cursor:pointer" onclick="openModal(<?= (int)$p['id'] ?>)">
@@ -324,6 +336,9 @@ $productsJson = json_encode(array_values($products), JSON_UNESCAPED_UNICODE);
                 <i class="fa-solid fa-image icon-fallback" style="display:none;"></i>
               <?php else: ?>
                 <i class="fa-solid fa-box icon-fallback"></i>
+              <?php endif; ?>
+              <?php if ($hasFlashSale): ?>
+                <div class="sale-badge"><i class="fa-solid fa-fire"></i> Flash Sale -<?= $discount ?>%</div>
               <?php endif; ?>
               <?php if (isset($_SESSION['user'])): ?>
                 <button class="btn-wish-card <?= in_array($p['id'], $wishlistIds) ? 'active' : '' ?>"
@@ -337,12 +352,23 @@ $productsJson = json_encode(array_values($products), JSON_UNESCAPED_UNICODE);
               <span class="product-type"><?= htmlspecialchars($displayType) ?></span>
               <div class="product-name" onclick="openModal(<?= (int)$p['id'] ?>)"><?= $dispName ?></div>
               <div class="product-desc"><?= htmlspecialchars($p['description']) ?></div>
-              <div class="price"><?= formatPrice((float)$p['price']) ?></div>
+              <?php if ($hasFlashSale): ?>
+                <div class="price-sale">
+                  <span class="price-old"><?= formatPrice($origPrice) ?></span>
+                  <span class="price"><?= formatPrice($salePrice) ?></span>
+                </div>
+              <?php else: ?>
+                <div class="price"><?= formatPrice($origPrice) ?></div>
+              <?php endif; ?>
               <div class="btn-action-wrap">
-                <button class="btn-cart-sm" onclick="addToCart(<?= $p['id'] ?>, '<?= htmlspecialchars(addslashes($p["name"]), ENT_QUOTES) ?>')" title="Thêm vào giỏ">
+                <button class="btn-cart-sm" onclick="event.stopPropagation(); addToCart(<?= $p['id'] ?>, '<?= htmlspecialchars(addslashes($p["name"]), ENT_QUOTES) ?>')"
+                  title="Thêm vào giỏ">
                   <i class="fa-solid fa-cart-plus"></i>
                 </button>
-                <button class="btn-buynow" onclick="buyNow(<?= $p['id'] ?>, '<?= htmlspecialchars(addslashes($p["name"]), ENT_QUOTES) ?>')">
+                <button class="btn-compare" type="button" data-product-id="<?= $p['id'] ?>"
+                  onclick="event.stopPropagation(); toggleCompare(<?= $p['id'] ?>, this)">So sánh</button>
+                <button class="btn-buynow"
+                  onclick="event.stopPropagation(); buyNow(<?= $p['id'] ?>, '<?= htmlspecialchars(addslashes($p["name"]), ENT_QUOTES) ?>')">
                   <i class="fa-solid fa-bolt"></i> Mua ngay
                 </button>
               </div>
@@ -512,7 +538,13 @@ $productsJson = json_encode(array_values($products), JSON_UNESCAPED_UNICODE);
         `<i class="${getTypeIcon(p.id_type)}"></i> ${escHtml(typeName)}`;
 
       document.getElementById('modalName').textContent = p.name;
-      document.getElementById('modalPrice').innerHTML = formatPrice(p.price);
+      const saleActive = p.flash_sale_active && p.flash_sale_price > 0 && p.flash_sale_price < p.price;
+      if (saleActive) {
+        document.getElementById('modalPrice').innerHTML =
+          `<span class="modal-price-old">${formatPrice(p.price)}</span> ${formatPrice(p.flash_sale_price)}`;
+      } else {
+        document.getElementById('modalPrice').innerHTML = formatPrice(p.price);
+      }
       document.getElementById('modalDesc').textContent = p.description;
 
       document.getElementById('modalMeta').innerHTML = `
@@ -666,6 +698,78 @@ $productsJson = json_encode(array_values($products), JSON_UNESCAPED_UNICODE);
           }
         });
     }
+
+    const compareStorageKey = 'compareProducts';
+    let compareIds = [];
+
+    function loadCompareSelection() {
+      try {
+        const stored = JSON.parse(localStorage.getItem(compareStorageKey) || '[]');
+        return Array.isArray(stored) ? stored.map(Number).filter(id => id > 0) : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function saveCompareSelection() {
+      localStorage.setItem(compareStorageKey, JSON.stringify(compareIds));
+    }
+
+    function syncCompareButtons() {
+      document.querySelectorAll('.btn-compare').forEach(btn => {
+        const id = Number(btn.dataset.productId);
+        const active = compareIds.includes(id);
+        btn.classList.toggle('selected', active);
+        btn.textContent = active ? 'Đã chọn' : 'So sánh';
+      });
+    }
+
+    function updateCompareBar() {
+      const bar = document.getElementById('compareBar');
+      const count = document.getElementById('compareCount');
+      if (!bar || !count) return;
+      if (compareIds.length > 0) {
+        bar.classList.add('open');
+      } else {
+        bar.classList.remove('open');
+      }
+      count.textContent = compareIds.length;
+    }
+
+    function toggleCompare(productId, btn) {
+      const id = Number(productId);
+      if (compareIds.includes(id)) {
+        compareIds = compareIds.filter(x => x !== id);
+      } else {
+        if (compareIds.length >= 3) {
+          showToast('Bạn chỉ có thể so sánh tối đa 3 sản phẩm.', 'error');
+          return;
+        }
+        compareIds.push(id);
+      }
+      saveCompareSelection();
+      syncCompareButtons();
+      updateCompareBar();
+    }
+
+    function openComparePage() {
+      if (compareIds.length < 2) {
+        showToast('Chọn ít nhất 2 sản phẩm để so sánh.', 'error');
+        return;
+      }
+      window.location.href = 'compare.php?ids=' + compareIds.join(',');
+    }
+
+    function clearCompareSelection() {
+      compareIds = [];
+      saveCompareSelection();
+      syncCompareButtons();
+      updateCompareBar();
+    }
+
+    compareIds = loadCompareSelection();
+    syncCompareButtons();
+    updateCompareBar();
     // ─────────────────────────────────────────────────────
 
     // ── BANNER SLIDESHOW ──────────────────────────────────

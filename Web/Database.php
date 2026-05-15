@@ -105,14 +105,73 @@ class Database {
         $stmt->execute([':id' => $id]);
         return $stmt->fetch();
     }
-    public function insertProduct(string $name, float $price, string $description, string $id_type, string $image): int {
-        $stmt = $this->conn->prepare("INSERT INTO p_product (name, price, description, id_type, image) VALUES (:name, :price, :description, :id_type, :image)");
-        $stmt->execute([':name'=>$name,':price'=>$price,':description'=>$description,':id_type'=>$id_type,':image'=>$image]);
+
+    public function getProductsByIds(array $ids): array
+    {
+        if (empty($ids)) {
+            return [];
+        }
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $stmt = $this->conn->prepare(
+            "SELECT p.*, t.name AS type_name
+             FROM p_product p
+             LEFT JOIN p_type t ON p.id_type = t.type
+             WHERE p.id IN ($placeholders)"
+        );
+        $stmt->execute($ids);
+        $rows = $stmt->fetchAll();
+        $results = [];
+        foreach ($ids as $id) {
+            foreach ($rows as $row) {
+                if ((int) $row['id'] === (int) $id) {
+                    $results[] = $row;
+                    break;
+                }
+            }
+        }
+        return $results;
+    }
+
+    public function insertProduct(string $name, float $price, string $description, string $id_type, string $image, int $flashSaleActive = 0, ?float $flashSalePrice = null): int
+    {
+        $stmt = $this->conn->prepare(
+            "INSERT INTO p_product (name, price, flash_sale_price, flash_sale_active, description, id_type, image)
+             VALUES (:name, :price, :flash_sale_price, :flash_sale_active, :description, :id_type, :image)"
+        );
+        $stmt->execute([
+            ':name' => $name,
+            ':price' => $price,
+            ':flash_sale_price' => $flashSalePrice,
+            ':flash_sale_active' => $flashSaleActive,
+            ':description' => $description,
+            ':id_type' => $id_type,
+            ':image' => $image,
+        ]);
         return (int)$this->conn->lastInsertId();
     }
-    public function updateProduct(int $id, string $name, float $price, string $description, string $id_type, string $image): bool {
-        $stmt = $this->conn->prepare("UPDATE p_product SET name=:name, price=:price, description=:description, id_type=:id_type, image=:image WHERE id=:id");
-        return $stmt->execute([':id'=>$id,':name'=>$name,':price'=>$price,':description'=>$description,':id_type'=>$id_type,':image'=>$image]);
+    public function updateProduct(int $id, string $name, float $price, string $description, string $id_type, string $image, int $flashSaleActive = 0, ?float $flashSalePrice = null): bool
+    {
+        $stmt = $this->conn->prepare(
+            "UPDATE p_product
+             SET name=:name,
+                 price=:price,
+                 flash_sale_price=:flash_sale_price,
+                 flash_sale_active=:flash_sale_active,
+                 description=:description,
+                 id_type=:id_type,
+                 image=:image
+             WHERE id=:id"
+        );
+        return $stmt->execute([
+            ':id' => $id,
+            ':name' => $name,
+            ':price' => $price,
+            ':flash_sale_price' => $flashSalePrice,
+            ':flash_sale_active' => $flashSaleActive,
+            ':description' => $description,
+            ':id_type' => $id_type,
+            ':image' => $image,
+        ]);
     }
     public function deleteProduct(int $id): bool {
         $stmt = $this->conn->prepare("DELETE FROM p_product WHERE id=:id");
@@ -126,7 +185,15 @@ class Database {
     /** Lấy toàn bộ giỏ hàng của user (kèm thông tin sản phẩm) */
     public function getCart(string $username): array {
         $stmt = $this->conn->prepare(
-            "SELECT c.id, c.quantity, p.id AS product_id, p.name, p.price, p.image, p.description, t.name AS type_name
+            "SELECT c.id, c.quantity, p.id AS product_id, p.name,
+                    CASE
+                        WHEN p.flash_sale_active = 1
+                             AND p.flash_sale_price > 0
+                             AND p.flash_sale_price < p.price
+                        THEN p.flash_sale_price
+                        ELSE p.price
+                    END AS price,
+                    p.image, p.description, t.name AS type_name
              FROM p_cart c
              JOIN p_product p ON c.product_id = p.id
              LEFT JOIN p_type t ON p.id_type = t.type

@@ -183,13 +183,14 @@ $productsJson = json_encode(array_values($products), JSON_UNESCAPED_UNICODE);
     .page-header-text p { font-size: .88rem; color: var(--muted); margin-top: 2px; }
 
     .btn-clear-all {
-      display: inline-flex; align-items: center; gap: 7px;
-      padding: 9px 18px; border-radius: 50px;
-      border: 1.5px solid #fecaca; background: #fff5f5; color: var(--red);
-      font-family: 'Inter', sans-serif; font-size: .85rem; font-weight: 700;
-      cursor: pointer; transition: all .2s;
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 10px 20px; border-radius: 999px;
+      border: none; background: linear-gradient(135deg, #f97316, #ef4444);
+      color: white; box-shadow: 0 14px 30px rgba(239, 68, 68, 0.18);
+      font-family: 'Inter', sans-serif; font-size: .9rem; font-weight: 700;
+      cursor: pointer; transition: transform .2s, box-shadow .2s, opacity .2s;
     }
-    .btn-clear-all:hover { background: var(--red); color: white; border-color: var(--red); }
+    .btn-clear-all:hover { transform: translateY(-1px); opacity: 0.95; }
 
     /* ── PRODUCT GRID ── */
     .featured { max-width: 1100px; margin: 28px auto 0; padding: 0 24px; }
@@ -199,6 +200,95 @@ $productsJson = json_encode(array_values($products), JSON_UNESCAPED_UNICODE);
     }
     @media(max-width:900px) { .product-grid { grid-template-columns: repeat(2, 1fr); } }
     @media(max-width:520px)  { .product-grid { grid-template-columns: 1fr; } }
+
+    .compare-bar {
+      position: sticky;
+      top: 84px;
+      margin: 0 auto 20px;
+      max-width: 1100px;
+      background: #ffffff;
+      border: 1.5px solid rgba(37, 99, 235, 0.18);
+      border-radius: 20px;
+      box-shadow: 0 18px 40px rgba(37, 99, 235, 0.09);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 16px 22px;
+      opacity: 0;
+      transform: translateY(-12px);
+      transition: opacity .25s ease, transform .25s ease;
+      z-index: 90;
+    }
+
+    .compare-bar.open {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .compare-bar div {
+      display: flex; align-items: center; gap: 10px;
+      color: var(--text); font-weight: 700;
+    }
+
+    .compare-actions {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    }
+
+    .btn-compare {
+      border: 1.5px solid rgba(37, 99, 235, 0.45);
+      background: rgba(37, 99, 235, 0.08);
+      color: var(--blue);
+      border-radius: 999px;
+      padding: 10px 18px;
+      cursor: pointer;
+      transition: all .2s;
+      font-weight: 700;
+      min-width: 120px;
+    }
+
+    .btn-compare:hover {
+      background: rgba(37, 99, 235, 0.14);
+      transform: translateY(-1px);
+    }
+
+    .btn-compare.selected {
+      background: var(--blue);
+      color: white;
+      box-shadow: 0 10px 24px rgba(37, 99, 235, 0.22);
+    }
+
+    .btn-compare-action,
+    .btn-clear-compare {
+      border: none;
+      border-radius: 999px;
+      padding: 10px 18px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background .2s, transform .15s;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+    }
+
+    .btn-compare-action {
+      background: var(--blue);
+      color: white;
+    }
+
+    .btn-compare-action:hover {
+      background: #1d4ed8;
+      transform: translateY(-1px);
+    }
+
+    .btn-clear-compare {
+      background: #f8fafc;
+      color: var(--text);
+      border: 1.5px solid var(--border);
+    }
+
+    .btn-clear-compare:hover {
+      background: #e2e8f0;
+      transform: translateY(-1px);
+    }
 
     .product-card {
       background: white; border: 1.5px solid var(--border);
@@ -224,16 +314,17 @@ $productsJson = json_encode(array_values($products), JSON_UNESCAPED_UNICODE);
 
     /* Nút remove wishlist trên card */
     .btn-remove-wish {
-      position: absolute; top: 10px; right: 10px;
-      width: 32px; height: 32px;
-      background: rgba(255,255,255,0.9); border: 1.5px solid #fecaca;
+      position: absolute; top: 12px; right: 12px;
+      width: 36px; height: 36px;
+      background: rgba(255,255,255,0.95); border: 1.5px solid rgba(248, 113, 113, 0.35);
       border-radius: 50%; display: flex; align-items: center; justify-content: center;
-      font-size: .85rem; cursor: pointer; color: var(--red);
-      transition: all .2s; backdrop-filter: blur(4px);
+      font-size: 1rem; cursor: pointer; color: var(--red);
+      transition: transform .2s, background .2s, color .2s, border-color .2s;
+      backdrop-filter: blur(6px); box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
     }
-    .btn-remove-wish:hover { background: var(--red); color: white; border-color: var(--red); transform: scale(1.1); }
+    .btn-remove-wish:hover { background: var(--red); color: white; border-color: var(--red); transform: translateY(-1px); }
 
-    .product-info { padding: 16px; flex: 1; display: flex; flex-direction: column; gap: 8px; }
+    .product-info { padding: 16px; flex: 1; display: flex; flex-direction: column; gap: 10px; }
 
     .product-type {
       display: inline-flex; align-items: center; gap: 5px;
@@ -259,23 +350,26 @@ $productsJson = json_encode(array_values($products), JSON_UNESCAPED_UNICODE);
     .btn-action-wrap { display: flex; gap: 8px; margin-top: auto; }
 
     .btn-buynow {
-      flex: 1; padding: 10px 14px;
-      background: var(--blue); color: white;
-      border: none; border-radius: var(--r-sm);
-      font-family: 'Inter', sans-serif; font-size: .9rem; font-weight: 700;
-      cursor: pointer; transition: background .2s, transform .15s;
-      display: flex; align-items: center; justify-content: center; gap: 7px;
+      flex: 1; padding: 12px 16px;
+      background: linear-gradient(135deg, #2563eb, #3b82f6);
+      color: white;
+      border: none; border-radius: 16px;
+      font-family: 'Inter', sans-serif; font-size: .95rem; font-weight: 800;
+      cursor: pointer; transition: background .2s, transform .15s, box-shadow .2s;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      box-shadow: 0 15px 30px rgba(37, 99, 235, 0.18);
     }
-    .btn-buynow:hover { background: #1d4ed8; transform: scale(1.02); }
+    .btn-buynow:hover { background: linear-gradient(135deg, #1d4ed8, #2563eb); transform: translateY(-1px); }
 
     .btn-cart-sm {
-      flex-shrink: 0; width: 38px; height: 38px;
-      background: #eff6ff; color: var(--blue);
-      border: 1.5px solid #bfdbfe; border-radius: var(--r-sm);
+      flex-shrink: 0; width: 42px; height: 42px;
+      background: #ffffff; color: var(--blue);
+      border: 1.5px solid rgba(37, 99, 235, 0.3); border-radius: 14px;
       display: flex; align-items: center; justify-content: center;
-      font-size: .95rem; cursor: pointer; transition: all .2s; padding: 0;
+      font-size: 1.05rem; cursor: pointer; transition: all .2s;
+      box-shadow: 0 10px 24px rgba(37, 99, 235, 0.08);
     }
-    .btn-cart-sm:hover { background: var(--blue); color: white; border-color: var(--blue); }
+    .btn-cart-sm:hover { background: var(--blue); color: white; border-color: var(--blue); transform: translateY(-1px); }
 
     /* ── EMPTY STATE ── */
     .empty-state { text-align: center; padding: 100px 24px; }
@@ -476,6 +570,14 @@ $productsJson = json_encode(array_values($products), JSON_UNESCAPED_UNICODE);
     <?php endif; ?>
   </div>
 
+  <div class="compare-bar" id="compareBar">
+    <div><i class="fa-solid fa-scale-balanced"></i> Đã chọn <span id="compareCount">0</span> sản phẩm để so sánh</div>
+    <div class="compare-actions">
+      <button class="btn-compare-action" type="button" onclick="openComparePage()">Xem so sánh</button>
+      <button class="btn-clear-compare" type="button" onclick="clearCompareSelection()">Xóa chọn</button>
+    </div>
+  </div>
+
   <!-- PRODUCTS -->
   <section class="featured">
     <?php if (empty($products)): ?>
@@ -489,6 +591,10 @@ $productsJson = json_encode(array_values($products), JSON_UNESCAPED_UNICODE);
       <div class="product-grid" id="productGrid">
         <?php foreach ($products as $i => $p):
           $delay = ($i % 4) * 0.07;
+          $hasFlashSale = !empty($p['flash_sale_active']) && (float) $p['flash_sale_price'] > 0 && (float) $p['flash_sale_price'] < (float) $p['price'];
+          $salePrice = $hasFlashSale ? (float) $p['flash_sale_price'] : 0;
+          $origPrice = (float) $p['price'];
+          $discount = $hasFlashSale ? round((($origPrice - $salePrice) / $origPrice) * 100) : 0;
         ?>
           <div class="product-card" id="card-<?= $p['id'] ?>" style="animation-delay:<?= $delay ?>s">
             <div class="product-img-wrap" onclick="openModal(<?= (int)$p['id'] ?>)">
@@ -499,6 +605,9 @@ $productsJson = json_encode(array_values($products), JSON_UNESCAPED_UNICODE);
                 <i class="fa-solid fa-image icon-fallback" style="display:none"></i>
               <?php else: ?>
                 <i class="fa-solid fa-box icon-fallback"></i>
+              <?php endif; ?>
+              <?php if ($hasFlashSale): ?>
+                <div class="sale-badge"><i class="fa-solid fa-fire"></i> Flash Sale -<?= $discount ?>%</div>
               <?php endif; ?>
               <button class="btn-remove-wish"
                       onclick="event.stopPropagation(); removeWishlist(<?= $p['id'] ?>, this)"
@@ -512,11 +621,20 @@ $productsJson = json_encode(array_values($products), JSON_UNESCAPED_UNICODE);
                 <?= htmlspecialchars($p['name']) ?>
               </div>
               <div class="product-desc"><?= htmlspecialchars($p['description']) ?></div>
-              <div class="price"><?= formatPrice((float)$p['price']) ?></div>
+              <?php if ($hasFlashSale): ?>
+                <div class="price-sale">
+                  <span class="price-old"><?= formatPrice($origPrice) ?></span>
+                  <span class="price"><?= formatPrice($salePrice) ?></span>
+                </div>
+              <?php else: ?>
+                <div class="price"><?= formatPrice($origPrice) ?></div>
+              <?php endif; ?>
               <div class="btn-action-wrap">
                 <button class="btn-cart-sm" onclick="addToCart(<?= $p['id'] ?>, '<?= htmlspecialchars(addslashes($p["name"]), ENT_QUOTES) ?>')" title="Thêm vào giỏ">
                   <i class="fa-solid fa-cart-plus"></i>
                 </button>
+                <button class="btn-compare" type="button" data-product-id="<?= $p['id'] ?>"
+                  onclick="toggleCompare(<?= $p['id'] ?>, this)">So sánh</button>
                 <button class="btn-buynow" onclick="buyNow(<?= $p['id'] ?>, '<?= htmlspecialchars(addslashes($p["name"]), ENT_QUOTES) ?>')">
                   <i class="fa-solid fa-bolt"></i> Mua ngay
                 </button>
@@ -586,6 +704,78 @@ $productsJson = json_encode(array_values($products), JSON_UNESCAPED_UNICODE);
       return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 
+    const compareStorageKey = 'compareProducts';
+    let compareIds = [];
+
+    function loadCompareSelection() {
+      try {
+        const stored = JSON.parse(localStorage.getItem(compareStorageKey) || '[]');
+        return Array.isArray(stored) ? stored.map(Number).filter(id => id > 0) : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function saveCompareSelection() {
+      localStorage.setItem(compareStorageKey, JSON.stringify(compareIds));
+    }
+
+    function syncCompareButtons() {
+      document.querySelectorAll('.btn-compare').forEach(btn => {
+        const id = Number(btn.dataset.productId);
+        const active = compareIds.includes(id);
+        btn.classList.toggle('selected', active);
+        btn.textContent = active ? 'Đã chọn' : 'So sánh';
+      });
+    }
+
+    function updateCompareBar() {
+      const bar = document.getElementById('compareBar');
+      const count = document.getElementById('compareCount');
+      if (!bar || !count) return;
+      if (compareIds.length > 0) {
+        bar.classList.add('open');
+      } else {
+        bar.classList.remove('open');
+      }
+      count.textContent = compareIds.length;
+    }
+
+    function toggleCompare(productId, btn) {
+      const id = Number(productId);
+      if (compareIds.includes(id)) {
+        compareIds = compareIds.filter(x => x !== id);
+      } else {
+        if (compareIds.length >= 3) {
+          showToast('Bạn chỉ có thể so sánh tối đa 3 sản phẩm.', 'error');
+          return;
+        }
+        compareIds.push(id);
+      }
+      saveCompareSelection();
+      syncCompareButtons();
+      updateCompareBar();
+    }
+
+    function openComparePage() {
+      if (compareIds.length < 2) {
+        showToast('Chọn ít nhất 2 sản phẩm để so sánh.', 'error');
+        return;
+      }
+      window.location.href = 'compare.php?ids=' + compareIds.join(',');
+    }
+
+    function clearCompareSelection() {
+      compareIds = [];
+      saveCompareSelection();
+      syncCompareButtons();
+      updateCompareBar();
+    }
+
+    compareIds = loadCompareSelection();
+    syncCompareButtons();
+    updateCompareBar();
+
     let currentModalId = null;
 
     function openModal(id) {
@@ -602,7 +792,13 @@ $productsJson = json_encode(array_values($products), JSON_UNESCAPED_UNICODE);
       const typeName = p.type_name || p.id_type;
       document.getElementById('modalType').innerHTML = `<i class="${getTypeIcon(p.id_type)}"></i> ${escHtml(typeName)}`;
       document.getElementById('modalName').textContent  = p.name;
-      document.getElementById('modalPrice').innerHTML   = formatPrice(p.price);
+      const saleActive = p.flash_sale_active && p.flash_sale_price > 0 && p.flash_sale_price < p.price;
+      if (saleActive) {
+        document.getElementById('modalPrice').innerHTML =
+          `<span class="modal-price-old">${formatPrice(p.price)}</span> ${formatPrice(p.flash_sale_price)}`;
+      } else {
+        document.getElementById('modalPrice').innerHTML   = formatPrice(p.price);
+      }
       document.getElementById('modalDesc').textContent  = p.description;
       document.getElementById('modalMeta').innerHTML = `
         <div class="modal-meta-row"><i class="fa-solid fa-tag"></i> Danh mục: <span>${escHtml(typeName)}</span></div>

@@ -31,6 +31,8 @@ CREATE TABLE `p_product` (
   `id` int(11) NOT NULL,
   `name` varchar(100) NOT NULL,
   `price` int(11) NOT NULL,
+  `flash_sale_price` int(11) DEFAULT NULL,
+  `flash_sale_active` tinyint(1) NOT NULL DEFAULT 0,
   `description` text NOT NULL,
   `type` varchar(100) NOT NULL,
   `image` varchar(100) NOT NULL,
@@ -50,6 +52,9 @@ INSERT INTO `p_product` (`id`, `name`, `price`, `description`, `type`, `image`, 
 (6, 'Xiaomi 17', 27990000, 'Xiaomi 17 tiếp tục khẳng định vị thế flagship nhỏ gọn khi sở hữu sức mạnh đột phá từ chip Snapdragon 8 Elite Gen 5, màn hình LTPO AMOLED 6.3 inch sắc nét. Điểm nhấn ấn tượng nhất chính là viên pin kỷ lục 7000mAh cho phép bạn sử dụng bền bỉ lên đến 2 ngày, đi kèm sạc nhanh 100W, nạp đầy pin trong khoảng 40 phút. Hệ thống camera Leica Summilux 50MP cùng công nghệ AI tiên tiến đảm bảo mọi bức ảnh chụp đêm đều giữ được độ chi tiết chuyên nghiệp và sống động. Bên cạnh đó, độ bền của máy cũng được nâng cấp với chuẩn kháng nước IP66/IP68/IP69, cho phép máy hoạt động trong nhiều điều kiện khắc nghiệt.', 'xiaomi', 'xiaomi17.png', 'xiaomi_01'),
 (7, 'Redmi k90', 9950000, 'Cùng với bản Pro, Xiaomi REDMI K90 chính thức được công ty Trung Quốc phát hành vào hôm nay (23/10/2024) với cấu hình rất mạnh mẽ và nhiều tính năng cao cấp.\r\n\r\nNhư truyền thống của dòng K, Xiaomi REDMI K90 sở hữu chip của mẫu Pro đời trước đó là Snapdragon 8 Elite cùng với viên pin khủng 7100mAh và sạc nhanh 100W.\r\n\r\nBên cạnh đó, sản phẩm còn cung cấp trải nghiệm hình ảnh xuất sắc với màn hình OLED 68 tỷ màu độ phân giải 1.5K, hệ thống camera nâng cấp vượt trội so với bản tiền nhiệm và còn nhiều trang bị cao cấp khác.', 'redmi', 'redmik90.png', 'xiaomi_02'),
 (8, 'iPhone 15 Pro Max 2TB | Chính hãng VN/A', 28990000, 'iPhone 15 Pro Max là chiếc iPhone cao cấp nhất với màn hình lớn nhất, thời lượng pin tốt nhất, cấu hình mạnh nhất và thiết kế khung Titan chuẩn hàng không vũ trụ siêu bền, siêu nhẹ. iPhone 15 Pro Max sở hữu những điểm vượt trội nhất nhà Apple. Theo đó, người dùng sẽ trải nghiệm chiếc iPhone cao cấp với hiệu năng “khủng” chip A17 Pro, khung titan, khả năng zoom nâng cấp, nút tác vụ mới,…', 'iphone', 'ip15pm.png', 'apple_01');
+
+UPDATE p_product SET flash_sale_price = 14990000, flash_sale_active = 1 WHERE id = 2;
+UPDATE p_product SET flash_sale_price = 21990000, flash_sale_active = 1 WHERE id = 5;
 
 --
 -- Chỉ mục cho các bảng đã đổ

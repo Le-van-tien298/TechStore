@@ -417,6 +417,105 @@ nav {
     }
 }
 
+.compare-bar {
+    position: sticky;
+    top: 84px;
+    margin: 0 auto 20px;
+    max-width: 1100px;
+    background: #ffffff;
+    border: 1.5px solid rgba(37, 99, 235, 0.18);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 20px;
+    opacity: 0;
+    transform: translateY(-12px);
+    transition: opacity .25s ease, transform .25s ease;
+    z-index: 90;
+}
+
+.compare-bar.open {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.compare-bar div {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text);
+    font-weight: 600;
+}
+
+.compare-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+button.btn-compare,
+button.btn-compare-action,
+button.btn-clear-compare {
+    appearance: none;
+    -webkit-appearance: none;
+    outline: none;
+}
+
+.btn-compare {
+    flex: 0 0 auto;
+    border: 1.5px solid var(--blue);
+    background: rgba(37, 99, 235, 0.08);
+    color: var(--blue);
+    border-radius: 18px;
+    padding: 10px 16px;
+    min-width: 118px;
+    cursor: pointer;
+    transition: all .2s;
+    font-weight: 700;
+    box-shadow: 0 10px 24px rgba(37, 99, 235, 0.08);
+}
+
+.btn-compare:hover {
+    background: rgba(37, 99, 235, 0.08);
+}
+
+.btn-compare.selected {
+    background: var(--blue);
+    color: white;
+}
+
+.btn-compare-action,
+.btn-clear-compare {
+    border: none;
+    border-radius: 999px;
+    padding: 10px 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background .2s, transform .2s;
+}
+
+.btn-compare-action {
+    background: var(--blue);
+    color: white;
+}
+
+.btn-compare-action:hover {
+    background: #1d4ed8;
+}
+
+.btn-clear-compare {
+    background: #f8fafc;
+    color: var(--text);
+    border: 1.5px solid var(--border);
+}
+
+.btn-clear-compare:hover {
+    background: #e2e8f0;
+}
 .product-card {
     background: white;
     border: 1.5px solid var(--border);
@@ -525,16 +624,56 @@ nav {
     margin-top: 4px;
 }
 
+.price-old {
+    font-size: 0.92rem;
+    color: #64748b;
+    text-decoration: line-through;
+    display: inline-block;
+    margin-right: 0.75rem;
+}
+
+.price-sale {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.sale-badge {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    z-index: 3;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    background: rgba(254, 243, 199, 0.95);
+    color: #92400e;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.modal-price-old {
+    font-size: 1rem;
+    color: #64748b;
+    text-decoration: line-through;
+    margin-right: 0.75rem;
+}
 /* Wrapper nút hành động */
 .btn-action-wrap {
     display: flex;
+    flex-wrap: wrap;
+        align-items: center;
     gap: 8px;
     margin-top: auto;
 }
 
 /* Nút Mua ngay - chiếm phần lớn */
 .btn-buynow {
-    flex: 1;
+    flex: 1 1 180px;
+        min-width: 160px;
     padding: 10px 14px;
     background: var(--blue);
     color: white;
@@ -549,6 +688,7 @@ nav {
     align-items: center;
     justify-content: center;
     gap: 7px;
+    min-height: 42px;
 }
 
 .btn-buynow:hover {
@@ -558,7 +698,7 @@ nav {
 
 /* Nút giỏ hàng - hình vuông nhỏ bên trái */
 .btn-cart-sm {
-    flex-shrink: 0;
+    flex: 0 0 auto;
     width: 38px;
     height: 38px;
     background: #eff6ff;
