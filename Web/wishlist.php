@@ -23,9 +23,16 @@ $products = [];
 if (!empty($wishlistProductIds)) {
     $placeholders = implode(',', array_fill(0, count($wishlistProductIds), '?'));
     $stmt = $pdo->prepare(
-        "SELECT p.*, t.name AS type_name
+    "SELECT p.*, t.name AS type_name,
+                COALESCE(r.avg_rating, 0) AS avg_rating,
+                COALESCE(r.review_count, 0) AS review_count
          FROM p_product p
          LEFT JOIN p_type t ON p.id_type = t.type
+         LEFT JOIN (
+           SELECT product_id, ROUND(AVG(rating), 1) AS avg_rating, COUNT(*) AS review_count
+           FROM p_product_reviews
+           GROUP BY product_id
+         ) r ON p.id = r.product_id
          WHERE p.id IN ($placeholders)
          ORDER BY p.id DESC"
     );
@@ -52,6 +59,24 @@ function typeIcon(string $typeCode): string {
         if (stripos($typeCode, $k) !== false) return $v;
     }
     return 'fa-solid fa-box';
+}
+
+function renderStarRating(float $rating): string
+{
+  $full = floor($rating);
+  $half = ($rating - $full) >= 0.5 ? 1 : 0;
+  $empty = 5 - $full - $half;
+  $result = '';
+  for ($i = 0; $i < $full; $i++) {
+    $result .= '<i class="fa-solid fa-star"></i>';
+  }
+  if ($half) {
+    $result .= '<i class="fa-solid fa-star-half-stroke"></i>';
+  }
+  for ($i = 0; $i < $empty; $i++) {
+    $result .= '<i class="fa-regular fa-star"></i>';
+  }
+  return $result;
 }
 
 $productsJson = json_encode(array_values($products), JSON_UNESCAPED_UNICODE);
@@ -196,9 +221,9 @@ $productsJson = json_encode(array_values($products), JSON_UNESCAPED_UNICODE);
     .featured { max-width: 1100px; margin: 28px auto 0; padding: 0 24px; }
 
     .product-grid {
-      display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 22px;
     }
-    @media(max-width:900px) { .product-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media(max-width:900px) { .product-grid { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); } }
     @media(max-width:520px)  { .product-grid { grid-template-columns: 1fr; } }
 
     .compare-bar {
@@ -296,35 +321,74 @@ $productsJson = json_encode(array_values($products), JSON_UNESCAPED_UNICODE);
       transition: all .22s; box-shadow: var(--shadow);
       display: flex; flex-direction: column;
       animation: cardIn .4s both;
+      position: relative;
     }
     @keyframes cardIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
     .product-card:hover { transform: translateY(-6px); box-shadow: var(--shadow-lg); border-color: var(--blue); }
 
     .product-img-wrap {
-      width: 100%; height: 200px;
+      width: 100%; height: 220px;
       background: #f1f5f9;
       display: flex; align-items: center; justify-content: center;
-      padding: 10px; overflow: hidden; position: relative; cursor: pointer;
+      padding: 10px; overflow: visible; position: relative; cursor: pointer;
+      border-radius: var(--r) var(--r) 0 0;
     }
     .product-img-wrap img {
-      max-width: 100%; max-height: 180px; width: auto; height: auto;
+      max-width: 100%; max-height: 200px; width: auto; height: auto;
       object-fit: contain; display: block;
     }
     .icon-fallback { font-size: 4rem; color: #cbd5e1; }
 
+    .sale-badge {
+      position: absolute; top: 14px; left: 14px;
+      background: linear-gradient(135deg, #fee2e2, #fecaca);
+      color: #b91c1c; font-weight: 700;
+      padding: 6px 10px; border-radius: 999px;
+      font-size: .75rem; display: inline-flex; align-items: center; gap: 6px;
+      box-shadow: 0 8px 24px rgba(239, 68, 68, 0.14);
+    }
+
+    .price-sale {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 1.15rem; margin-top: 4px;
+    }
+    .price-sale .price-old {
+      color: var(--muted); text-decoration: line-through;
+      font-size: .95rem; font-weight: 600;
+    }
+    .price-sale .price {
+      color: var(--blue); font-size: 1.15rem; font-weight: 800;
+    }
+
     /* Nút remove wishlist trên card */
     .btn-remove-wish {
-      position: absolute; top: 12px; right: 12px;
-      width: 36px; height: 36px;
-      background: rgba(255,255,255,0.95); border: 1.5px solid rgba(248, 113, 113, 0.35);
+      position: absolute; top: 10px; right: 10px;
+      width: 40px; height: 40px;
+      background: rgba(255,255,255,0.95); border: none;
       border-radius: 50%; display: flex; align-items: center; justify-content: center;
       font-size: 1rem; cursor: pointer; color: var(--red);
-      transition: transform .2s, background .2s, color .2s, border-color .2s;
-      backdrop-filter: blur(6px); box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      backdrop-filter: blur(8px); box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+      z-index: 50;
     }
-    .btn-remove-wish:hover { background: var(--red); color: white; border-color: var(--red); transform: translateY(-1px); }
+    .btn-remove-wish:hover {
+      transform: scale(1.15);
+      background: rgba(255, 240, 240, 0.98);
+      box-shadow: 0 4px 16px rgba(239, 68, 68, 0.2);
+    }
+    .btn-remove-wish i {
+      transition: transform 0.3s ease;
+    }
+    .btn-remove-wish:active i {
+      animation: heartCrack 0.4s ease-out;
+    }
+    @keyframes heartCrack {
+      0% { transform: scale(0.8) rotate(-10deg); }
+      50% { transform: scale(1.2) rotate(10deg); }
+      100% { transform: scale(1) rotate(0deg); }
+    }
 
-    .product-info { padding: 16px; flex: 1; display: flex; flex-direction: column; gap: 10px; }
+    .product-info { padding: 16px; flex: 1; display: flex; flex-direction: column; gap: 10px; min-height: 240px; }
 
     .product-type {
       display: inline-flex; align-items: center; gap: 5px;
@@ -334,30 +398,45 @@ $productsJson = json_encode(array_values($products), JSON_UNESCAPED_UNICODE);
       text-transform: uppercase; letter-spacing: .5px; width: fit-content;
     }
 
+    .rating-summary {
+      display: flex; align-items: center; gap: 8px;
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: .85rem;
+    }
+    .rating-stars {
+      display: inline-flex; align-items: center; gap: 4px;
+      color: #f59e0b;
+      font-size: .85rem;
+    }
+    .rating-stars i { color: #f59e0b; }
+    .review-count { color: var(--muted); }
+
     .product-name {
-      font-size: .97rem; font-weight: 700; line-height: 1.4;
+      font-size: 1rem; font-weight: 700; line-height: 1.4;
       cursor: pointer; transition: color .2s;
     }
     .product-name:hover { color: var(--blue); text-decoration: underline; }
 
     .product-desc {
-      font-size: .82rem; color: var(--muted); line-height: 1.5;
+      font-size: .85rem; color: var(--muted); line-height: 1.6;
       display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
     }
 
     .price { font-size: 1.15rem; font-weight: 800; color: var(--blue); margin-top: 4px; }
 
-    .btn-action-wrap { display: flex; gap: 8px; margin-top: auto; }
+    .btn-action-wrap { display: flex; flex-wrap: wrap; gap: 10px; margin-top: auto; }
 
     .btn-buynow {
-      flex: 1; padding: 12px 16px;
+      flex: 1 1 180px; padding: 12px 16px;
       background: linear-gradient(135deg, #2563eb, #3b82f6);
       color: white;
       border: none; border-radius: 16px;
       font-family: 'Inter', sans-serif; font-size: .95rem; font-weight: 800;
       cursor: pointer; transition: background .2s, transform .15s, box-shadow .2s;
-      display: flex; align-items: center; justify-content: center; gap: 8px;
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
       box-shadow: 0 15px 30px rgba(37, 99, 235, 0.18);
+      min-width: 0;
     }
     .btn-buynow:hover { background: linear-gradient(135deg, #1d4ed8, #2563eb); transform: translateY(-1px); }
 
@@ -370,6 +449,14 @@ $productsJson = json_encode(array_values($products), JSON_UNESCAPED_UNICODE);
       box-shadow: 0 10px 24px rgba(37, 99, 235, 0.08);
     }
     .btn-cart-sm:hover { background: var(--blue); color: white; border-color: var(--blue); transform: translateY(-1px); }
+
+    .product-card .btn-compare {
+      flex: 1 1 140px; min-width: 0; display: inline-flex;
+      align-items: center; justify-content: center;
+      padding: 12px 14px;
+      border-radius: 16px;
+      box-shadow: 0 10px 24px rgba(37, 99, 235, 0.08);
+    }
 
     /* ── EMPTY STATE ── */
     .empty-state { text-align: center; padding: 100px 24px; }
@@ -435,6 +522,56 @@ $productsJson = json_encode(array_values($products), JSON_UNESCAPED_UNICODE);
     }
     .modal-name { font-size: 1.25rem; font-weight: 800; line-height: 1.35; color: var(--text); }
     .modal-price { font-size: 1.7rem; font-weight: 900; color: var(--blue); }
+    .modal-rating-summary {
+      display: flex; align-items: center; gap: 10px;
+      margin: 12px 0 0;
+      font-size: .95rem; color: var(--muted);
+    }
+    .modal-rating-summary .rating-stars { display: inline-flex; align-items: center; gap: 4px; color: #f59e0b; }
+    .modal-rating-summary .rating-stars i { color: #f59e0b; }
+    .modal-rating-summary .review-count { color: var(--text); font-weight: 700; }
+    .modal-review-form { margin: 18px 0 10px; display: flex; flex-direction: column; gap: 12px; }
+    .review-form-label { font-size: .95rem; font-weight: 700; color: var(--text); }
+    .review-stars { display: inline-flex; align-items: center; gap: 6px; }
+    .review-stars button {
+      background: transparent; border: none; cursor: pointer; color: #cbd5e1; font-size: 1.35rem;
+      transition: color .2s, transform .15s;
+    }
+    .review-stars button.active, .review-stars button:hover { color: #f59e0b; transform: scale(1.05); }
+    .review-stars button:focus { outline: none; }
+    #reviewComment {
+      width: 100%; min-height: 110px; resize: vertical;
+      border: 1.5px solid var(--border); border-radius: var(--r-sm);
+      padding: 12px; font-family: 'Inter', sans-serif; font-size: .95rem; color: var(--text);
+      background: #f8fafc;
+    }
+    .modal-review-list { margin-top: 18px; display: flex; flex-direction: column; gap: 10px; }
+    .review-list { display: grid; gap: 12px; }
+    .review-item {
+      background: #f8fafc; border: 1.5px solid var(--border);
+      border-radius: var(--r-sm); padding: 14px;
+    }
+    .review-item-header {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      flex-wrap: wrap;
+    }
+    .review-item-user { font-weight: 700; color: var(--text); }
+    .review-item-date { font-size: .82rem; color: var(--muted); }
+    .review-item-rating { margin-top: 10px; color: #f59e0b; }
+    .review-item-comment {
+      margin-top: 10px; color: #334155; line-height: 1.65; white-space: pre-wrap;
+    }
+    .review-empty {
+      padding: 16px; border: 1.5px dashed var(--border); border-radius: var(--r-sm);
+      color: var(--muted); font-size: .92rem; background: #ffffff;
+    }
+    .modal-btn-review {
+      align-self: flex-start; padding: 12px 18px; border: none;
+      border-radius: 14px; background: #10b981; color: white;
+      font-family: 'Inter', sans-serif; font-weight: 700; cursor: pointer;
+      transition: background .2s, transform .15s;
+    }
+    .modal-btn-review:hover { background: #059669; transform: translateY(-1px); }
     .modal-divider { border: none; border-top: 1.5px solid var(--border); }
     .modal-section-label {
       font-size: .75rem; font-weight: 700; color: var(--muted);
@@ -617,6 +754,10 @@ $productsJson = json_encode(array_values($products), JSON_UNESCAPED_UNICODE);
             </div>
             <div class="product-info">
               <span class="product-type"><?= htmlspecialchars($p['type_name'] ?? $p['id_type']) ?></span>
+              <div class="rating-summary">
+                <div class="rating-stars"><?= renderStarRating((float) ($p['avg_rating'] ?? 0)) ?></div>
+                <span class="review-count"><?= (int) ($p['review_count'] ?? 0) ?> đánh giá</span>
+              </div>
               <div class="product-name" onclick="openModal(<?= (int)$p['id'] ?>)">
                 <?= htmlspecialchars($p['name']) ?>
               </div>
@@ -666,6 +807,17 @@ $productsJson = json_encode(array_values($products), JSON_UNESCAPED_UNICODE);
           <span class="modal-type" id="modalType"></span>
           <div class="modal-name" id="modalName"></div>
           <div class="modal-price" id="modalPrice"></div>
+          <div class="modal-rating-summary" id="modalRatingSummary"></div>
+          <div class="modal-review-form" id="modalReviewForm">
+            <div class="review-form-label">Đánh giá của bạn</div>
+            <div class="review-stars" id="reviewStars"></div>
+            <textarea id="reviewComment" placeholder="Viết nhận xét của bạn..." rows="4"></textarea>
+            <button class="modal-btn-review" id="modalBtnReview" type="button" onclick="submitReview()">Gửi đánh giá</button>
+          </div>
+          <div class="modal-review-list" id="modalReviewList">
+            <div class="modal-section-label"><i class="fa-solid fa-star"></i> Nhận xét khách hàng</div>
+            <div class="review-list" id="reviewList"></div>
+          </div>
           <hr class="modal-divider">
           <div class="modal-section-label"><i class="fa-solid fa-align-left"></i> Mô tả sản phẩm</div>
           <div class="modal-desc" id="modalDesc"></div>
@@ -699,6 +851,57 @@ $productsJson = json_encode(array_values($products), JSON_UNESCAPED_UNICODE);
       for (const [k, v] of Object.entries(typeIconMap)) { if (t.includes(k)) return v; }
       return 'fa-solid fa-box';
     }
+
+    let currentModalReviewRating = 0;
+
+    function renderStarButtons(selected = 0) {
+      const container = document.getElementById('reviewStars');
+      if (!container) return;
+      container.innerHTML = '';
+      for (let i = 1; i <= 5; i++) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.innerHTML = '<i class="fa-solid fa-star"></i>';
+        btn.className = i <= selected ? 'active' : '';
+        btn.title = i + ' sao';
+        btn.addEventListener('click', () => setReviewRating(i));
+        container.appendChild(btn);
+      }
+    }
+
+    function setReviewRating(value) {
+      currentModalReviewRating = value;
+      renderStarButtons(value);
+    }
+
+    function renderRatingStars(rating) {
+      const parts = [];
+      const full = Math.floor(rating);
+      const half = rating - full >= 0.5;
+      for (let i = 0; i < full; i++) parts.push('<i class="fa-solid fa-star"></i>');
+      if (half) parts.push('<i class="fa-solid fa-star-half-stroke"></i>');
+      while (parts.length < 5) parts.push('<i class="fa-regular fa-star"></i>');
+      return parts.join('');
+    }
+
+    function updateModalRatingSummary(product) {
+      const target = document.getElementById('modalRatingSummary');
+      if (!target) return;
+      const avg = Number(product.avg_rating || 0).toFixed(1);
+      const count = Number(product.review_count || 0);
+      target.innerHTML = `
+        <div class="rating-stars">${renderRatingStars(Number(avg))}</div>
+        <div class="review-count"><strong>${avg}</strong> / 5 · ${count} đánh giá</div>
+      `;
+    }
+
+    function resetReviewForm() {
+      currentModalReviewRating = 0;
+      renderStarButtons(0);
+      const comment = document.getElementById('reviewComment');
+      if (comment) comment.value = '';
+    }
+
     function formatPrice(price) { return Number(price).toLocaleString('vi-VN') + '₫'; }
     function escHtml(str) {
       return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -779,35 +982,8 @@ $productsJson = json_encode(array_values($products), JSON_UNESCAPED_UNICODE);
     let currentModalId = null;
 
     function openModal(id) {
-      const p = productMap[id];
-      if (!p) return;
-      currentModalId = id;
-      const imgSide = document.getElementById('modalImgSide');
-      imgSide.innerHTML = p.image
-        ? `<img src="images/${escHtml(p.image)}" alt="${escHtml(p.name)}"
-               onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
-           <i class="fa-solid fa-image icon-fallback" style="display:none;font-size:6rem;"></i>`
-        : `<i class="fa-solid fa-box icon-fallback" style="font-size:6rem;"></i>`;
-
-      const typeName = p.type_name || p.id_type;
-      document.getElementById('modalType').innerHTML = `<i class="${getTypeIcon(p.id_type)}"></i> ${escHtml(typeName)}`;
-      document.getElementById('modalName').textContent  = p.name;
-      const saleActive = p.flash_sale_active && p.flash_sale_price > 0 && p.flash_sale_price < p.price;
-      if (saleActive) {
-        document.getElementById('modalPrice').innerHTML =
-          `<span class="modal-price-old">${formatPrice(p.price)}</span> ${formatPrice(p.flash_sale_price)}`;
-      } else {
-        document.getElementById('modalPrice').innerHTML   = formatPrice(p.price);
-      }
-      document.getElementById('modalDesc').textContent  = p.description;
-      document.getElementById('modalMeta').innerHTML = `
-        <div class="modal-meta-row"><i class="fa-solid fa-tag"></i> Danh mục: <span>${escHtml(typeName)}</span></div>
-        <div class="modal-meta-row"><i class="fa-solid fa-hashtag"></i> Mã sản phẩm: <span>#${escHtml(String(p.id))}</span></div>
-        <div class="modal-meta-row"><i class="fa-solid fa-circle-check" style="color:#10b981"></i> Tình trạng: <span style="color:#10b981">Còn hàng</span></div>
-      `;
-      document.getElementById('modalBtnCart').dataset.name = p.name;
-      document.getElementById('modalOverlay').classList.add('open');
-      document.body.style.overflow = 'hidden';
+      if (!id) return;
+      window.location.href = 'product.php?id=' + encodeURIComponent(id);
     }
 
     function closeModal() {
@@ -831,6 +1007,86 @@ $productsJson = json_encode(array_values($products), JSON_UNESCAPED_UNICODE);
       const btn = card ? card.querySelector('.btn-remove-wish') : null;
       closeModal();
       removeWishlist(currentModalId, btn);
+    }
+
+    function loadModalReviews(productId) {
+      const list = document.getElementById('reviewList');
+      if (!list) return;
+      list.innerHTML = '<div class="review-empty">Đang tải đánh giá...</div>';
+      fetch(`reviews_action.php?action=list&product_id=${productId}`)
+        .then(r => r.json())
+        .then(d => {
+          if (!d.ok) {
+            showToast(d.message || 'Không tải được đánh giá.', 'error');
+            list.innerHTML = '<div class="review-empty">Không tải được đánh giá.</div>';
+            return;
+          }
+          renderReviewList(d.reviews || []);
+        })
+        .catch(() => {
+          showToast('Lỗi kết nối. Vui lòng thử lại.', 'error');
+          list.innerHTML = '<div class="review-empty">Không tải được đánh giá.</div>';
+        });
+    }
+
+    function renderReviewList(reviews) {
+      const list = document.getElementById('reviewList');
+      if (!list) return;
+      if (!Array.isArray(reviews) || reviews.length === 0) {
+        list.innerHTML = '<div class="review-empty">Chưa có đánh giá nào. Hãy là người đầu tiên đánh giá sản phẩm này!</div>';
+        return;
+      }
+      list.innerHTML = reviews.map(r => `
+        <div class="review-item">
+          <div class="review-item-header">
+            <div class="review-item-user">${escHtml(r.user_name || 'Người dùng')}</div>
+            <div class="review-item-date">${escHtml(r.created_at || '')}</div>
+          </div>
+          <div class="review-item-rating">${renderRatingStars(Number(r.rating || 0))}</div>
+          <div class="review-item-comment">${escHtml(r.comment || 'Không có nội dung.')}</div>
+        </div>
+      `).join('');
+    }
+
+    function submitReview() {
+      if (!currentModalId) return;
+      if (currentModalReviewRating <= 0) {
+        showToast('Vui lòng chọn số sao.', 'error');
+        return;
+      }
+      const comment = document.getElementById('reviewComment')?.value.trim() || '';
+      const button = document.getElementById('modalBtnReview');
+      button.disabled = true;
+      fetch('reviews_action.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: `action=submit&product_id=${currentModalId}&rating=${currentModalReviewRating}&comment=${encodeURIComponent(comment)}`
+      })
+      .then(r => r.json())
+      .then(d => {
+        button.disabled = false;
+        if (d.ok) {
+          showToast('Cám ơn bạn đã đánh giá!', 'success');
+          const p = productMap[currentModalId];
+          if (p) {
+            p.avg_rating = d.avg_rating;
+            p.review_count = d.review_count;
+          }
+          updateModalRatingSummary(p || {avg_rating: d.avg_rating, review_count: d.review_count});
+          const cardRating = document.querySelector('#card-' + currentModalId + ' .rating-stars');
+          const cardCount = document.querySelector('#card-' + currentModalId + ' .review-count');
+          if (cardRating) cardRating.innerHTML = renderRatingStars(Number(d.avg_rating));
+          if (cardCount) cardCount.textContent = `${d.review_count} đánh giá`;
+          resetReviewForm();
+          loadModalReviews(currentModalId);
+        } else {
+          showToast(d.message || 'Đã có lỗi xảy ra.', 'error');
+        }
+      })
+      .catch(() => {
+        button.disabled = false;
+        showToast('Lỗi kết nối. Vui lòng thử lại.', 'error');
+      });
     }
 
     // ── Toast ──

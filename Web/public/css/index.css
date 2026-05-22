@@ -594,6 +594,29 @@ button.btn-clear-compare {
     width: fit-content;
 }
 
+.rating-summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+    color: var(--muted);
+    font-size: 0.82rem;
+}
+
+.rating-stars {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: #f59e0b;
+}
+
+.rating-stars i {
+    color: #f59e0b;
+}
+
+.review-count {
+    color: var(--muted);
+}
 .product-name {
     font-size: 0.97rem;
     font-weight: 700;

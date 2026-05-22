@@ -101,7 +101,19 @@ class Database {
         return $stmt->fetchAll();
     }
     public function getProductById(int $id): array|false {
-        $stmt = $this->conn->prepare("SELECT p.*, t.name AS type_name FROM p_product p LEFT JOIN p_type t ON p.id_type = t.type WHERE p.id = :id");
+        $stmt = $this->conn->prepare(
+            "SELECT p.*, t.name AS type_name,
+                    COALESCE(r.avg_rating, 0) AS avg_rating,
+                    COALESCE(r.review_count, 0) AS review_count
+             FROM p_product p
+             LEFT JOIN p_type t ON p.id_type = t.type
+             LEFT JOIN (
+               SELECT product_id, ROUND(AVG(rating), 1) AS avg_rating, COUNT(*) AS review_count
+               FROM p_product_reviews
+               GROUP BY product_id
+             ) r ON p.id = r.product_id
+             WHERE p.id = :id"
+        );
         $stmt->execute([':id' => $id]);
         return $stmt->fetch();
     }
@@ -113,9 +125,16 @@ class Database {
         }
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
         $stmt = $this->conn->prepare(
-            "SELECT p.*, t.name AS type_name
+            "SELECT p.*, t.name AS type_name,
+                    COALESCE(r.avg_rating, 0) AS avg_rating,
+                    COALESCE(r.review_count, 0) AS review_count
              FROM p_product p
              LEFT JOIN p_type t ON p.id_type = t.type
+             LEFT JOIN (
+               SELECT product_id, ROUND(AVG(rating), 1) AS avg_rating, COUNT(*) AS review_count
+               FROM p_product_reviews
+               GROUP BY product_id
+             ) r ON p.id = r.product_id
              WHERE p.id IN ($placeholders)"
         );
         $stmt->execute($ids);
@@ -130,6 +149,55 @@ class Database {
             }
         }
         return $results;
+    }
+
+    public function addProductReview(string $username, int $productId, int $rating, string $comment): bool
+    {
+        if ($rating < 1 || $rating > 5) {
+            return false;
+        }
+        $stmt = $this->conn->prepare(
+            "INSERT INTO p_product_reviews (username, product_id, rating, comment)
+             VALUES (:username, :product_id, :rating, :comment)
+             ON DUPLICATE KEY UPDATE rating = :rating, comment = :comment, created_at = CURRENT_TIMESTAMP"
+        );
+        return $stmt->execute([
+            ':username' => $username,
+            ':product_id' => $productId,
+            ':rating' => $rating,
+            ':comment' => $comment,
+        ]);
+    }
+
+    public function getProductReviews(int $productId): array
+    {
+        $stmt = $this->conn->prepare(
+            "SELECT r.*, u.name AS user_name
+             FROM p_product_reviews r
+             JOIN p_users u ON r.username = u.username
+             WHERE r.product_id = :product_id
+             ORDER BY r.created_at DESC"
+        );
+        $stmt->execute([':product_id' => $productId]);
+        return $stmt->fetchAll();
+    }
+
+    public function getProductRatingSummary(int $productId): array
+    {
+        $stmt = $this->conn->prepare(
+            "SELECT COALESCE(COUNT(*), 0) AS review_count, COALESCE(ROUND(AVG(rating), 1), 0) AS avg_rating
+             FROM p_product_reviews
+             WHERE product_id = :product_id"
+        );
+        $stmt->execute([':product_id' => $productId]);
+        return $stmt->fetch();
+    }
+
+    public function hasUserReviewed(string $username, int $productId): bool
+    {
+        $stmt = $this->conn->prepare("SELECT COUNT(*) FROM p_product_reviews WHERE username = :username AND product_id = :product_id");
+        $stmt->execute([':username' => $username, ':product_id' => $productId]);
+        return (int) $stmt->fetchColumn() > 0;
     }
 
     public function insertProduct(string $name, float $price, string $description, string $id_type, string $image, int $flashSaleActive = 0, ?float $flashSalePrice = null): int

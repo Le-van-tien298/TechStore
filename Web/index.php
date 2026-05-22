@@ -26,9 +26,16 @@ $orderBy = match ($sort) {
 };
 
 // ── Xây dựng WHERE ──
-$baseSelect = "SELECT p.*, t.name AS type_name
+$baseSelect = "SELECT p.*, t.name AS type_name,
+               COALESCE(r.avg_rating, 0) AS avg_rating,
+               COALESCE(r.review_count, 0) AS review_count
                FROM p_product p
-               LEFT JOIN p_type t ON p.id_type = t.type";
+               LEFT JOIN p_type t ON p.id_type = t.type
+               LEFT JOIN (
+                 SELECT product_id, ROUND(AVG(rating), 1) AS avg_rating, COUNT(*) AS review_count
+                 FROM p_product_reviews
+                 GROUP BY product_id
+               ) r ON p.id = r.product_id";
 
 $conditions = [];
 $params     = [];
@@ -103,6 +110,24 @@ function typeIcon(string $typeCode): string
     if (stripos($typeCode, $k) !== false) return $v;
   }
   return 'fa-solid fa-box';
+}
+
+function renderStarRating(float $rating): string
+{
+  $full = floor($rating);
+  $half = ($rating - $full) >= 0.5 ? 1 : 0;
+  $empty = 5 - $full - $half;
+  $output = '';
+  for ($i = 0; $i < $full; $i++) {
+    $output .= '<i class="fa-solid fa-star"></i>';
+  }
+  if ($half) {
+    $output .= '<i class="fa-solid fa-star-half-stroke"></i>';
+  }
+  for ($i = 0; $i < $empty; $i++) {
+    $output .= '<i class="fa-regular fa-star"></i>';
+  }
+  return $output;
 }
 
 // Encode products sang JSON cho JS modal
@@ -352,6 +377,10 @@ $productsJson = json_encode(array_values($products), JSON_UNESCAPED_UNICODE);
               <span class="product-type"><?= htmlspecialchars($displayType) ?></span>
               <div class="product-name" onclick="openModal(<?= (int)$p['id'] ?>)"><?= $dispName ?></div>
               <div class="product-desc"><?= htmlspecialchars($p['description']) ?></div>
+              <div class="rating-summary">
+                <div class="rating-stars"><?= renderStarRating((float) ($p['avg_rating'] ?? 0)) ?></div>
+                <span class="review-count"><?= (int) ($p['review_count'] ?? 0) ?> đánh giá</span>
+              </div>
               <?php if ($hasFlashSale): ?>
                 <div class="price-sale">
                   <span class="price-old"><?= formatPrice($origPrice) ?></span>
@@ -523,48 +552,8 @@ $productsJson = json_encode(array_values($products), JSON_UNESCAPED_UNICODE);
     }
 
     function openModal(id) {
-      const p = productMap[id];
-      if (!p) return;
-
-      const imgSide = document.getElementById('modalImgSide');
-      imgSide.innerHTML = p.image ?
-        `<img src="images/${escHtml(p.image)}" alt="${escHtml(p.name)}"
-               onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
-           <i class="fa-solid fa-image icon-fallback" style="display:none;font-size:6rem;"></i>` :
-        `<i class="fa-solid fa-box icon-fallback" style="font-size:6rem;"></i>`;
-
-      const typeName = p.type_name || p.id_type;
-      document.getElementById('modalType').innerHTML =
-        `<i class="${getTypeIcon(p.id_type)}"></i> ${escHtml(typeName)}`;
-
-      document.getElementById('modalName').textContent = p.name;
-      const saleActive = p.flash_sale_active && p.flash_sale_price > 0 && p.flash_sale_price < p.price;
-      if (saleActive) {
-        document.getElementById('modalPrice').innerHTML =
-          `<span class="modal-price-old">${formatPrice(p.price)}</span> ${formatPrice(p.flash_sale_price)}`;
-      } else {
-        document.getElementById('modalPrice').innerHTML = formatPrice(p.price);
-      }
-      document.getElementById('modalDesc').textContent = p.description;
-
-      document.getElementById('modalMeta').innerHTML = `
-        <div class="modal-meta-row">
-          <i class="fa-solid fa-tag"></i>
-          Danh mục: <span>${escHtml(typeName)}</span>
-        </div>
-        <div class="modal-meta-row">
-          <i class="fa-solid fa-hashtag"></i>
-          Mã sản phẩm: <span>#${escHtml(String(p.id))}</span>
-        </div>
-        <div class="modal-meta-row">
-          <i class="fa-solid fa-circle-check" style="color:#10b981"></i>
-          Tình trạng: <span style="color:#10b981">Còn hàng</span>
-        </div>
-      `;
-
-      document.getElementById('modalOverlay').classList.add('open');
-      document.body.style.overflow = 'hidden';
-      document.getElementById('modalBtnCart').dataset.name = p.name;
+      if (!id) return;
+      window.location.href = 'product.php?id=' + encodeURIComponent(id);
     }
 
     function closeModal() {
